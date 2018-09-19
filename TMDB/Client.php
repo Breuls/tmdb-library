@@ -44,7 +44,6 @@ class Client {
 			$asset_class = "\\TMDB\\structures\\".ucfirst($type); // NOTE: As long as we can map the methods to the class name, this works...
 			$results = array();
 			foreach ($response->data->results as $asset) {
-				if(!is_object($asset)) continue; // TMDB API occasionally includes null in the result array.
 				if ($expand) {
 					$info = $this->info($type, $asset->id);
 					if ($info) {
@@ -80,7 +79,7 @@ class Client {
 		if ($method) {
 			$response = $this->send_request($type . '/' . $id . '/' . $method, $params);
 		} else {
-			$response = $this->send_request($type . '/' . $id, $params);
+			$response = $this->send_request($type . '/' . $id);
 		}
 		if (!$response->error) {
 			$result = $response->data;
@@ -129,13 +128,13 @@ class Client {
 			if ($results) {
 				$response->data = json_decode($results);
 				if (!$this->paged && isset($response->data->total_pages) && $response->data->page < $response->data->total_pages) {
-					$paged_response = $this->send_request($method, $params + array(
-						'page' => $response->data->page + 1
-					));
+					if (!isset($params['page']))
+						$params['page'] = 2;
+					else
+						$params['page'] += 1;
+					$paged_response = $this->send_request($method, $params);
 					if (!$paged_response->error) {
-						$response->data->page = 1;
 						$response->data->results = array_merge($response->data->results, $paged_response->data->results);
-						$response->data->total_pages = 1;
 					} else {
 						$results = array();
 						$this->error = $response->error;
